@@ -23,6 +23,7 @@ public class BookDTO {
     private Integer shelfPosition;
     private String genreShelf;
     private String ageShelf;
+    private Boolean isDuplicate;
     
     // Constructors
     public BookDTO() {}
@@ -87,4 +88,7 @@ public class BookDTO {
     
     public String getAgeShelf() { return ageShelf; }
     public void setAgeShelf(String ageShelf) { this.ageShelf = ageShelf; }
+    
+    public Boolean getIsDuplicate() { return isDuplicate; }
+    public void setIsDuplicate(Boolean isDuplicate) { this.isDuplicate = isDuplicate; }
 }

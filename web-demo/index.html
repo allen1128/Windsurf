@@ -221,7 +221,26 @@
                 <button class="btn" onclick="testRegister()">Test Register API</button>
                 <button class="btn" onclick="testLogin()">Test Login API</button>
                 <button class="btn" onclick="testBooks()">Test Books API</button>
+                <button class="btn" onclick="testScanISBN()">Test ISBN Scan</button>
+                <button class="btn" onclick="testScanCover()">Test Cover Scan</button>
+                <button class="btn" onclick="testAddBook()">Test Add Book</button>
+                <button class="btn" onclick="testAIRecommendation()">Test AI Recommendation</button>
+                <button class="btn" onclick="testDuplicateCheck()">Test Duplicate Check</button>
                 <div id="apiResult" class="api-result hidden"></div>
+            </div>
+            
+            <div class="api-test">
+                <h3>Book Management</h3>
+                <div class="form-group">
+                    <label for="testISBN">Test ISBN:</label>
+                    <input type="text" id="testISBN" value="9780439708180" placeholder="Enter ISBN for testing">
+                </div>
+                <div class="form-group">
+                    <label for="testBookTitle">Test Book Title:</label>
+                    <input type="text" id="testBookTitle" value="Harry Potter and the Sorcerer's Stone" placeholder="Enter book title">
+                </div>
+                <button class="btn" onclick="testGoogleBooksSearch()">Search Google Books</button>
+                <button class="btn" onclick="clearResults()">Clear Results</button>
             </div>
             
             <button class="btn" onclick="logout()">Logout</button>
@@ -368,7 +387,7 @@
 
         async function testBooks() {
             try {
-                const response = await fetch(API_BASE + '/books/library/1', {
+                const response = await fetch(API_BASE + '/books', {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${authToken || 'test-token'}`,
@@ -386,6 +405,145 @@
         function showApiResult(text) {
             apiResult.textContent = text;
             apiResult.classList.remove('hidden');
+        }
+
+        function clearResults() {
+            apiResult.classList.add('hidden');
+        }
+
+        // Advanced API Testing Functions
+        async function testScanISBN() {
+            const isbn = document.getElementById('testISBN').value || '9780439708180';
+            const testData = {
+                type: 'isbn',
+                data: isbn
+            };
+            
+            try {
+                const response = await fetch(API_BASE + '/books/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken || 'test-token'}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                const result = await response.text();
+                showApiResult(`ISBN Scan Test (${isbn}):\nStatus: ${response.status}\nResponse: ${result}`);
+            } catch (error) {
+                showApiResult(`ISBN Scan Error: ${error.message}`);
+            }
+        }
+
+        async function testScanCover() {
+            // Mock base64 image data for testing
+            const mockImageData = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=';
+            
+            const testData = {
+                type: 'cover',
+                data: mockImageData
+            };
+            
+            try {
+                const response = await fetch(API_BASE + '/books/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken || 'test-token'}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                const result = await response.text();
+                showApiResult(`Cover Scan Test:\nStatus: ${response.status}\nResponse: ${result}`);
+            } catch (error) {
+                showApiResult(`Cover Scan Error: ${error.message}`);
+            }
+        }
+
+        async function testAddBook() {
+            const testData = {
+                genreShelf: 'Fantasy',
+                ageShelf: '8-12'
+            };
+            
+            try {
+                // Using a mock book ID (1) for testing
+                const response = await fetch(API_BASE + '/books/1/add-to-library', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken || 'test-token'}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                const result = await response.text();
+                showApiResult(`Add Book Test:\nStatus: ${response.status}\nResponse: ${result}`);
+            } catch (error) {
+                showApiResult(`Add Book Error: ${error.message}`);
+            }
+        }
+
+        async function testAIRecommendation() {
+            try {
+                // Using a mock book ID (1) for testing
+                const response = await fetch(API_BASE + '/books/1/recommendations', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken || 'test-token'}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const result = await response.text();
+                showApiResult(`AI Recommendation Test:\nStatus: ${response.status}\nResponse: ${result}`);
+            } catch (error) {
+                showApiResult(`AI Recommendation Error: ${error.message}`);
+            }
+        }
+
+        async function testDuplicateCheck() {
+            const isbn = document.getElementById('testISBN').value || '9780439708180';
+            const testData = {
+                isbn: isbn
+            };
+            
+            try {
+                const response = await fetch(API_BASE + '/books/check-duplicate', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken || 'test-token'}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                const result = await response.text();
+                showApiResult(`Duplicate Check Test (${isbn}):\nStatus: ${response.status}\nResponse: ${result}`);
+            } catch (error) {
+                showApiResult(`Duplicate Check Error: ${error.message}`);
+            }
+        }
+
+        async function testGoogleBooksSearch() {
+            const query = document.getElementById('testBookTitle').value || 'Harry Potter';
+            
+            try {
+                const response = await fetch(API_BASE + `/books/search?query=${encodeURIComponent(query)}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken || 'test-token'}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const result = await response.text();
+                showApiResult(`Google Books Search Test (${query}):\nStatus: ${response.status}\nResponse: ${result}`);
+            } catch (error) {
+                showApiResult(`Google Books Search Error: ${error.message}`);
+            }
         }
     </script>
 </body>
