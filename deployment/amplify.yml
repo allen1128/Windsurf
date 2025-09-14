@@ -1,0 +1,30 @@
+version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - '# Execute Amplify CLI with the helper script'
+        - amplifyPush --simple
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - cd backend
+        - echo "Installing backend dependencies"
+        - ./mvnw clean install -DskipTests
+    build:
+      commands:
+        - cd backend
+        - echo "Building Spring Boot application"
+        - ./mvnw package -DskipTests
+        - echo "Build completed on `date`"
+    postBuild:
+      commands:
+        - echo "Post build phase completed on `date`"
+  artifacts:
+    baseDirectory: backend/target
+    files:
+      - '*.jar'
+  cache:
+    paths:
+      - backend/.m2/**/*

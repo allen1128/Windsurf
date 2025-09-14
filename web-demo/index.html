@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LittleLibrary - Web Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .logo p {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .toggle-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .toggle-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .toggle-link a:hover {
+            text-decoration: underline;
+        }
+        
+        .message {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .dashboard {
+            text-align: center;
+        }
+        
+        .welcome {
+            margin-bottom: 30px;
+        }
+        
+        .welcome h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .api-test {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .api-test h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .api-result {
+            background: #e9ecef;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login/Register Form -->
+        <div id="authForm">
+            <div class="logo">
+                <h1>📚 LittleLibrary</h1>
+                <p>Your Family's Digital Bookshelf</p>
+            </div>
+            
+            <div id="message" class="message hidden"></div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                
+                <div id="registerFields" class="hidden">
+                    <div class="form-group">
+                        <label for="firstName">First Name</label>
+                        <input type="text" id="firstName" name="firstName">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="lastName">Last Name</label>
+                        <input type="text" id="lastName" name="lastName">
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn" id="submitBtn">Login</button>
+            </form>
+            
+            <div class="toggle-link">
+                <a href="#" id="toggleAuth">Don't have an account? Register</a>
+            </div>
+        </div>
+        
+        <!-- Dashboard -->
+        <div id="dashboard" class="dashboard hidden">
+            <div class="welcome">
+                <h2>Welcome to LittleLibrary!</h2>
+                <p>Backend API is running and ready to test</p>
+            </div>
+            
+            <div class="api-test">
+                <h3>API Test Panel</h3>
+                <button class="btn" onclick="testRegister()">Test Register API</button>
+                <button class="btn" onclick="testLogin()">Test Login API</button>
+                <button class="btn" onclick="testBooks()">Test Books API</button>
+                <div id="apiResult" class="api-result hidden"></div>
+            </div>
+            
+            <button class="btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:8080/api';
+        let isRegisterMode = false;
+        let authToken = null;
+
+        // DOM elements
+        const authForm = document.getElementById('authForm');
+        const dashboard = document.getElementById('dashboard');
+        const loginForm = document.getElementById('loginForm');
+        const registerFields = document.getElementById('registerFields');
+        const submitBtn = document.getElementById('submitBtn');
+        const toggleAuth = document.getElementById('toggleAuth');
+        const message = document.getElementById('message');
+        const apiResult = document.getElementById('apiResult');
+
+        // Toggle between login and register
+        toggleAuth.addEventListener('click', (e) => {
+            e.preventDefault();
+            isRegisterMode = !isRegisterMode;
+            
+            if (isRegisterMode) {
+                registerFields.classList.remove('hidden');
+                submitBtn.textContent = 'Register';
+                toggleAuth.textContent = 'Already have an account? Login';
+            } else {
+                registerFields.classList.add('hidden');
+                submitBtn.textContent = 'Login';
+                toggleAuth.textContent = "Don't have an account? Register";
+            }
+            hideMessage();
+        });
+
+        // Handle form submission
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(loginForm);
+            const data = {
+                email: formData.get('email'),
+                password: formData.get('password')
+            };
+            
+            if (isRegisterMode) {
+                data.firstName = formData.get('firstName');
+                data.lastName = formData.get('lastName');
+            }
+            
+            try {
+                const endpoint = isRegisterMode ? '/auth/register' : '/auth/login';
+                const response = await fetch(API_BASE + endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.text();
+                
+                if (response.ok) {
+                    showMessage('Success! Backend API is working.', 'success');
+                    authToken = result || 'mock-token';
+                    setTimeout(() => {
+                        authForm.classList.add('hidden');
+                        dashboard.classList.remove('hidden');
+                    }, 1500);
+                } else {
+                    showMessage(`API Response: ${response.status} - ${result}`, 'error');
+                }
+            } catch (error) {
+                showMessage(`Connection Error: ${error.message}`, 'error');
+            }
+        });
+
+        function showMessage(text, type) {
+            message.textContent = text;
+            message.className = `message ${type}`;
+            message.classList.remove('hidden');
+        }
+
+        function hideMessage() {
+            message.classList.add('hidden');
+        }
+
+        function logout() {
+            authToken = null;
+            dashboard.classList.add('hidden');
+            authForm.classList.remove('hidden');
+            hideMessage();
+        }
+
+        // API Test Functions
+        async function testRegister() {
+            const testData = {
+                email: 'test@example.com',
+                password: 'password123',
+                firstName: 'Test',
+                lastName: 'User'
+            };
+            
+            try {
+                const response = await fetch(API_BASE + '/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                const result = await response.text();
+                showApiResult(`Register API Test:\nStatus: ${response.status}\nResponse: ${result}`);
+            } catch (error) {
+                showApiResult(`Register API Error: ${error.message}`);
+            }
+        }
+
+        async function testLogin() {
+            const testData = {
+                email: 'test@example.com',
+                password: 'password123'
+            };
+            
+            try {
+                const response = await fetch(API_BASE + '/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                const result = await response.text();
+                showApiResult(`Login API Test:\nStatus: ${response.status}\nResponse: ${result}`);
+            } catch (error) {
+                showApiResult(`Login API Error: ${error.message}`);
+            }
+        }
+
+        async function testBooks() {
+            try {
+                const response = await fetch(API_BASE + '/books/library/1', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken || 'test-token'}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const result = await response.text();
+                showApiResult(`Books API Test:\nStatus: ${response.status}\nResponse: ${result}`);
+            } catch (error) {
+                showApiResult(`Books API Error: ${error.message}`);
+            }
+        }
+
+        function showApiResult(text) {
+            apiResult.textContent = text;
+            apiResult.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
