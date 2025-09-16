@@ -1,105 +1,45 @@
-import React from 'react';
-import {NavigationContainer} from '@react-navigation/native';
-import {createStackNavigator} from '@react-navigation/stack';
-import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {Provider as PaperProvider} from 'react-native-paper';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+/**
+ * Sample React Native App
+ * https://github.com/facebook/react-native
+ *
+ * @format
+ */
 
-// Screens
-import LoginScreen from './src/screens/LoginScreen';
-import LibraryScreen from './src/screens/LibraryScreen';
-import ScanScreen from './src/screens/ScanScreen';
-import BookDetailsScreen from './src/screens/BookDetailsScreen';
-import ProfileScreen from './src/screens/ProfileScreen';
+import { NewAppScreen } from '@react-native/new-app-screen';
+import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
+import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 
-// Context
-import {AuthProvider} from './src/context/AuthContext';
+function App() {
+  const isDarkMode = useColorScheme() === 'dark';
 
-const Stack = createStackNavigator();
-const Tab = createBottomTabNavigator();
-
-function MainTabs() {
   return (
-    <Tab.Navigator
-      screenOptions={({route}) => ({
-        tabBarIcon: ({focused, color, size}) => {
-          let iconName;
-
-          if (route.name === 'Library') {
-            iconName = 'library-books';
-          } else if (route.name === 'Scan') {
-            iconName = 'camera-alt';
-          } else if (route.name === 'Profile') {
-            iconName = 'person';
-          }
-
-          return <Icon name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: '#6B4E71',
-        tabBarInactiveTintColor: 'gray',
-        headerStyle: {
-          backgroundColor: '#6B4E71',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      })}>
-      <Tab.Screen 
-        name="Library" 
-        component={LibraryScreen}
-        options={{title: 'My Library'}}
-      />
-      <Tab.Screen 
-        name="Scan" 
-        component={ScanScreen}
-        options={{title: 'Scan Book'}}
-      />
-      <Tab.Screen 
-        name="Profile" 
-        component={ProfileScreen}
-        options={{title: 'Profile'}}
-      />
-    </Tab.Navigator>
+    <SafeAreaProvider>
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+      <AppContent />
+    </SafeAreaProvider>
   );
 }
 
-function App(): JSX.Element {
+function AppContent() {
+  const safeAreaInsets = useSafeAreaInsets();
+
   return (
-    <PaperProvider>
-      <AuthProvider>
-        <NavigationContainer>
-          <Stack.Navigator
-            initialRouteName="Login"
-            screenOptions={{
-              headerStyle: {
-                backgroundColor: '#6B4E71',
-              },
-              headerTintColor: '#fff',
-              headerTitleStyle: {
-                fontWeight: 'bold',
-              },
-            }}>
-            <Stack.Screen 
-              name="Login" 
-              component={LoginScreen}
-              options={{headerShown: false}}
-            />
-            <Stack.Screen 
-              name="Main" 
-              component={MainTabs}
-              options={{headerShown: false}}
-            />
-            <Stack.Screen 
-              name="BookDetails" 
-              component={BookDetailsScreen}
-              options={{title: 'Book Details'}}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </AuthProvider>
-    </PaperProvider>
+    <View style={styles.container}>
+      <NewAppScreen
+        templateFileName="App.tsx"
+        safeAreaInsets={safeAreaInsets}
+      />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
 
 export default App;

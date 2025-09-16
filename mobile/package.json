@@ -1,5 +1,5 @@
 {
-  "name": "LittleLibraryMobile",
+  "name": "mobile",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -10,46 +10,32 @@
     "test": "jest"
   },
   "dependencies": {
-    "@react-native-async-storage/async-storage": "^1.19.5",
-    "@react-navigation/bottom-tabs": "^6.5.11",
-    "@react-navigation/native": "^6.1.9",
-    "@react-navigation/stack": "^6.3.20",
-    "axios": "^1.6.0",
-    "react": "19.1.1",
+    "react": "19.1.0",
     "react-native": "0.81.4",
-    "react-native-camera": "^4.2.1",
-    "react-native-elements": "^3.4.3",
-    "react-native-gesture-handler": "^2.13.4",
-    "react-native-image-picker": "^7.0.3",
-    "react-native-linear-gradient": "^2.8.3",
-    "react-native-modal": "^13.0.1",
-    "react-native-paper": "^5.11.1",
-    "react-native-permissions": "^3.10.1",
-    "react-native-reanimated": "^3.5.4",
-    "react-native-safe-area-context": "^4.7.4",
-    "react-native-screens": "^3.27.0",
-    "react-native-svg": "^13.14.0",
-    "react-native-vector-icons": "^10.0.2"
+    "@react-native/new-app-screen": "0.81.4",
+    "react-native-safe-area-context": "^5.5.2"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0",
-    "@babel/preset-env": "^7.20.0",
-    "@babel/runtime": "^7.20.0",
-    "@react-native-community/cli": "^20.0.2",
-    "@react-native/eslint-config": "^0.72.2",
-    "@react-native/metro-config": "^0.72.11",
-    "@tsconfig/react-native": "^3.0.0",
-    "@types/react": "19.1.13",
-    "@types/react-test-renderer": "^18.0.0",
-    "babel-jest": "^29.2.1",
+    "@babel/core": "^7.25.2",
+    "@babel/preset-env": "^7.25.3",
+    "@babel/runtime": "^7.25.0",
+    "@react-native-community/cli": "20.0.0",
+    "@react-native-community/cli-platform-android": "20.0.0",
+    "@react-native-community/cli-platform-ios": "20.0.0",
+    "@react-native/babel-preset": "0.81.4",
+    "@react-native/eslint-config": "0.81.4",
+    "@react-native/metro-config": "0.81.4",
+    "@react-native/typescript-config": "0.81.4",
+    "@types/jest": "^29.5.13",
+    "@types/react": "^19.1.0",
+    "@types/react-test-renderer": "^19.1.0",
     "eslint": "^8.19.0",
-    "jest": "^29.2.1",
-    "metro-react-native-babel-preset": "0.76.8",
-    "prettier": "^2.4.1",
-    "react-test-renderer": "18.2.0",
-    "typescript": "4.8.4"
+    "jest": "^29.6.3",
+    "prettier": "2.8.8",
+    "react-test-renderer": "19.1.0",
+    "typescript": "^5.8.3"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=20"
   }
 }
