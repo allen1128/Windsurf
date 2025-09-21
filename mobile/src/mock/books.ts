@@ -1,0 +1,58 @@
+import type { Book } from '../types';
+
+export const MOCK_BOOKS: Book[] = [
+  {
+    id: '1',
+    title: 'Goodnight Moon',
+    author: 'Margaret Wise Brown',
+    genre: 'Classics',
+    ageMin: 1,
+    ageMax: 3,
+    coverUrl: 'https://covers.openlibrary.org/b/id/9251996-L.jpg',
+  },
+  {
+    id: '2',
+    title: 'Where the Wild Things Are',
+    author: 'Maurice Sendak',
+    genre: 'Classics',
+    ageMin: 3,
+    ageMax: 6,
+    coverUrl: 'https://covers.openlibrary.org/b/id/8225266-L.jpg',
+  },
+  {
+    id: '3',
+    title: 'The Gruffalo',
+    author: 'Julia Donaldson',
+    genre: 'Stories',
+    ageMin: 3,
+    ageMax: 7,
+    coverUrl: 'https://covers.openlibrary.org/b/id/7819254-L.jpg',
+  },
+  {
+    id: '4',
+    title: 'The Very Hungry Caterpillar',
+    author: 'Eric Carle',
+    genre: 'Classics',
+    ageMin: 1,
+    ageMax: 4,
+    coverUrl: 'https://covers.openlibrary.org/b/id/7885096-L.jpg',
+  },
+  {
+    id: '5',
+    title: 'Dog Man',
+    author: 'Dav Pilkey',
+    genre: 'Comics',
+    ageMin: 6,
+    ageMax: 10,
+    coverUrl: 'https://covers.openlibrary.org/b/id/9251965-L.jpg',
+  },
+  {
+    id: '6',
+    title: 'Harry Potter and the Sorcerer\'s Stone',
+    author: 'J.K. Rowling',
+    genre: 'Fantasy',
+    ageMin: 8,
+    ageMax: 12,
+    coverUrl: 'https://covers.openlibrary.org/b/id/7984916-L.jpg',
+  },
+];
