@@ -110,8 +110,46 @@ public class BookService {
     }
     
     public List<BookDTO> searchBooks(String query) {
-        // Mock implementation - return empty list for testing
-        return new ArrayList<>();
+        // Use Google Books to search by title/text
+        List<com.littlelibrary.model.Book> results = googleBooksService.searchBooksByTitle(query);
+        return results.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    /**
+     * Lookup books by either ISBN (preferred) or title.
+     * If ISBN is provided, at most one result is returned.
+     */
+    public List<BookDTO> lookupBooks(String isbn, String title) {
+        List<BookDTO> out = new ArrayList<>();
+        if (isbn != null && !isbn.trim().isEmpty()) {
+            com.littlelibrary.model.Book b = googleBooksService.getBookByIsbn(isbn.trim());
+            if (b != null) {
+                out.add(toDTO(b));
+            }
+            return out;
+        }
+        if (title != null && !title.trim().isEmpty()) {
+            List<com.littlelibrary.model.Book> results = googleBooksService.searchBooksByTitle(title.trim());
+            for (com.littlelibrary.model.Book model : results) {
+                out.add(toDTO(model));
+            }
+        }
+        return out;
+    }
+
+    private BookDTO toDTO(com.littlelibrary.model.Book b) {
+        BookDTO dto = new BookDTO();
+        dto.setTitle(b.getTitle());
+        dto.setAuthor(b.getAuthor());
+        dto.setIsbn(b.getIsbn());
+        dto.setDescription(b.getDescription());
+        dto.setGenre(b.getGenre());
+        dto.setCoverImageUrl(b.getCoverImageUrl());
+        dto.setPublisher(b.getPublisher());
+        dto.setPublicationYear(b.getPublicationYear());
+        dto.setPageCount(b.getPageCount());
+        dto.setGoogleBooksId(b.getGoogleBooksId());
+        return dto;
     }
     
     public AIRecommendationResponse getAIRecommendations(Long bookId) {

@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class GoogleBooksService {
@@ -22,6 +24,37 @@ public class GoogleBooksService {
             .baseUrl("https://www.googleapis.com/books/v1")
             .build();
         this.objectMapper = new ObjectMapper();
+    }
+    
+    /**
+     * Search Google Books by title/text and return a list of parsed Book models.
+     */
+    public List<Book> searchBooksByTitle(String titleQuery) {
+        try {
+            String q = titleQuery.replace("\n", " ").trim();
+            if (q.length() > 200) {
+                q = q.substring(0, 200);
+            }
+            String url = "/volumes?q=intitle:" + q.replace(" ", "+");
+            if (!apiKey.isEmpty()) {
+                url += "&key=" + apiKey;
+            }
+            Mono<String> response = webClient.get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(String.class);
+            String responseBody = response.block();
+            JsonNode root = objectMapper.readTree(responseBody);
+            List<Book> results = new ArrayList<>();
+            if (root.has("items") && root.get("items").isArray()) {
+                for (JsonNode item : root.get("items")) {
+                    results.add(parseBookFromGoogleBooks(item));
+                }
+            }
+            return results;
+        } catch (Exception e) {
+            throw new RuntimeException("Error searching books by title from Google Books API", e);
+        }
     }
     
     public Book getBookByIsbn(String isbn) {

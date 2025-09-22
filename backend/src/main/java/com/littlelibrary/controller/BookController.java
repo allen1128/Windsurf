@@ -82,4 +82,15 @@ public class BookController {
         List<BookDTO> books = bookService.searchBooks(query);
         return ResponseEntity.ok(books);
     }
+    
+    @GetMapping("/lookup")
+    public ResponseEntity<List<BookDTO>> lookupBooks(
+            @RequestParam(required = false) String isbn,
+            @RequestParam(required = false, name = "title") String title) {
+        if ((isbn == null || isbn.isBlank()) && (title == null || title.isBlank())) {
+            return ResponseEntity.badRequest().build();
+        }
+        List<BookDTO> books = bookService.lookupBooks(isbn, title);
+        return ResponseEntity.ok(books);
+    }
 }

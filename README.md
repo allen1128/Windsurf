@@ -60,6 +60,9 @@ npx react-native run-ios
 - `POST /api/books/scan` - Scan and identify book
 - `GET /api/books/{id}/recommendations` - Get AI recommendations
 - `POST /api/books/{id}/duplicate-check` - Check for duplicates
+- `GET /api/books/search?query={text}` - Search books by title using Google Books
+- `GET /api/books/lookup?isbn={isbn}` - Lookup a single book by ISBN via Google Books
+- `GET /api/books/lookup?title={title}` - Lookup books by title via Google Books
 
 ## Environment Variables
 
@@ -68,3 +71,7 @@ Create `.env` files with:
 - `GOOGLE_BOOKS_API_KEY`
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
+
+Notes:
+- `GOOGLE_BOOKS_API_KEY` is optional for development but recommended to avoid anonymous quota limits. Configure it in `backend/src/main/resources/application.properties` as `google.books.api.key` or export it as an environment variable.
+- The backend reads this value in `GoogleBooksService` and appends it to Google Books requests.
