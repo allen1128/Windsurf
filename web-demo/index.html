@@ -239,8 +239,11 @@
                     <label for="testBookTitle">Test Book Title:</label>
                     <input type="text" id="testBookTitle" value="Harry Potter and the Sorcerer's Stone" placeholder="Enter book title">
                 </div>
-                <button class="btn" onclick="testGoogleBooksSearch()">Search Google Books</button>
+                <button class="btn" onclick="testLookupISBN()">Lookup by ISBN (Google)</button>
+                <button class="btn" onclick="testLookupTitle()">Lookup by Title (Google)</button>
+                <button class="btn" onclick="testGoogleBooksSearch()">Search (Legacy Endpoint)</button>
                 <button class="btn" onclick="clearResults()">Clear Results</button>
+                <div id="booksList" class="api-result hidden" style="background:#fff"></div>
             </div>
             
             <button class="btn" onclick="logout()">Logout</button>
@@ -407,6 +410,25 @@
             apiResult.classList.remove('hidden');
         }
 
+        function showBooksList(books) {
+            const el = document.getElementById('booksList');
+            if (!books || books.length === 0) {
+                el.innerHTML = '<em>No books found.</em>';
+            } else {
+                el.innerHTML = books.map(b => `
+                    <div style="display:flex; gap:12px; align-items:flex-start; padding:10px; border-bottom:1px solid #e5e7eb;">
+                        <img src="${b.coverImageUrl || ''}" alt="cover" style="width:48px; height:72px; object-fit:cover; background:#eee; border-radius:4px;" onerror="this.style.display='none'" />
+                        <div style="flex:1;">
+                            <div style="font-weight:700; color:#111827;">${b.title || 'Untitled'}</div>
+                            <div style="color:#6b7280; font-size:14px;">${b.author || ''}</div>
+                            <div style="color:#9ca3af; font-size:12px; margin-top:2px;">ISBN: ${b.isbn || 'N/A'}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            el.classList.remove('hidden');
+        }
+
         function clearResults() {
             apiResult.classList.add('hidden');
         }
@@ -539,10 +561,37 @@
                     }
                 });
                 
-                const result = await response.text();
-                showApiResult(`Google Books Search Test (${query}):\nStatus: ${response.status}\nResponse: ${result}`);
+                const json = await response.json();
+                showApiResult(`Search (${query}) returned ${Array.isArray(json) ? json.length : 0} result(s), status ${response.status}`);
+                showBooksList(Array.isArray(json) ? json : []);
             } catch (error) {
                 showApiResult(`Google Books Search Error: ${error.message}`);
+            }
+        }
+
+        async function testLookupISBN() {
+            const isbn = document.getElementById('testISBN').value || '9780439708180';
+            try {
+                const response = await fetch(API_BASE + `/books/lookup?isbn=${encodeURIComponent(isbn)}`);
+                const json = await response.json();
+                const count = Array.isArray(json) ? json.length : 0;
+                showApiResult(`Lookup by ISBN (${isbn}) returned ${count} result(s), status ${response.status}`);
+                showBooksList(Array.isArray(json) ? json : []);
+            } catch (error) {
+                showApiResult(`Lookup ISBN Error: ${error.message}`);
+            }
+        }
+
+        async function testLookupTitle() {
+            const title = document.getElementById('testBookTitle').value || 'Harry Potter';
+            try {
+                const response = await fetch(API_BASE + `/books/lookup?title=${encodeURIComponent(title)}`);
+                const json = await response.json();
+                const count = Array.isArray(json) ? json.length : 0;
+                showApiResult(`Lookup by Title ("${title}") returned ${count} result(s), status ${response.status}`);
+                showBooksList(Array.isArray(json) ? json : []);
+            } catch (error) {
+                showApiResult(`Lookup Title Error: ${error.message}`);
             }
         }
     </script>
