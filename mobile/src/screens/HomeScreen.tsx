@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SearchBar from '../components/SearchBar';
 import BookshelfGrid from '../components/BookshelfGrid';
@@ -9,6 +9,10 @@ import type { Book } from '../types';
 export default function HomeScreen() {
   const [query, setQuery] = useState('');
   const [activeGenre, setActiveGenre] = useState<string>('All');
+  const [addOpen, setAddOpen] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<Array<any>>([]);
 
   const genres = useMemo(() => {
     const unique = new Set<string>(['All']);
@@ -56,16 +60,17 @@ export default function HomeScreen() {
   };
 
   const onSubmitSearch = async () => {
-    const q = query.trim();
+    const q = searchText.trim();
     if (!q) return;
     try {
-      const results = await lookupBooks(q);
-      if (!results || results.length === 0) {
+      setSearching(true);
+      const found = await lookupBooks(q);
+      setResults(found || []);
+      if (!found || found.length === 0) {
         Alert.alert('No results', 'No matching books found.');
-        return;
-      }
-      if (results.length === 1) {
-        const b = results[0];
+      } else if (found.length === 1) {
+        // Auto prompt for single result
+        const b = found[0];
         Alert.alert(
           'Add to Library?',
           `${b.title} by ${b.author || 'Unknown'}\nGenre: ${b.genre || 'N/A'}`,
@@ -84,30 +89,11 @@ export default function HomeScreen() {
             },
           ]
         );
-      } else {
-        // Multiple results: offer to add the first match, or we could extend with a chooser later
-        const b = results[0];
-        Alert.alert(
-          `Multiple matches (${results.length})`,
-          `Add the first match?\n${b.title} by ${b.author || 'Unknown'}\nGenre: ${b.genre || 'N/A'}`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Add First',
-              onPress: async () => {
-                try {
-                  await addToLibrary(b.id, b.genre);
-                  Alert.alert('Added', 'The book was added to your library.');
-                } catch (e: any) {
-                  Alert.alert('Error', e?.message || 'Failed to add.');
-                }
-              },
-            },
-          ]
-        );
       }
     } catch (e: any) {
       Alert.alert('Search Error', e?.message || 'Failed to search.');
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -118,13 +104,6 @@ export default function HomeScreen() {
         <Text style={styles.subtitle}>Find, scan, and organize</Text>
       </View>
 
-      <SearchBar
-        value={query}
-        onChangeText={setQuery}
-        onSubmitEditing={onSubmitSearch}
-        returnKeyType="search"
-        placeholder="Search by title or ISBN…"
-      />
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips} contentContainerStyle={styles.chipsContent}>
         {genres.map(g => (
@@ -141,6 +120,65 @@ export default function HomeScreen() {
       <View style={styles.gridWrapper}>
         <BookshelfGrid books={filtered} onPressBook={(b) => console.log('Pressed', b.title)} />
       </View>
+
+      {/* Add button (FAB) */}
+      <TouchableOpacity style={styles.addFab} onPress={() => { setAddOpen(true); setResults([]); setSearchText(''); }}>
+        <Text style={styles.addFabText}>Add</Text>
+      </TouchableOpacity>
+
+      {/* Add/Search Modal */}
+      <Modal visible={addOpen} transparent animationType="slide" onRequestClose={() => setAddOpen(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Add a Book</Text>
+            <SearchBar
+              value={searchText}
+              onChangeText={setSearchText}
+              onSubmitEditing={onSubmitSearch}
+              returnKeyType="search"
+              placeholder="Enter ISBN or title"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setAddOpen(false)} style={[styles.actionBtn, styles.cancelBtn]}>
+                <Text style={styles.actionText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onSubmitSearch} style={[styles.actionBtn, styles.searchBtn]}>
+                {searching ? <ActivityIndicator color="white" /> : <Text style={styles.actionText}>Search</Text>}
+              </TouchableOpacity>
+            </View>
+
+            {results.length > 0 && (
+              <FlatList
+                data={results}
+                keyExtractor={(item) => String(item.id)}
+                contentContainerStyle={{ paddingTop: 8 }}
+                renderItem={({ item }) => (
+                  <View style={styles.resultRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.resultTitle} numberOfLines={1}>{item.title}</Text>
+                      <Text style={styles.resultMeta} numberOfLines={1}>{item.author || 'Unknown'} • {item.genre || 'N/A'}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.addRowBtn}
+                      onPress={async () => {
+                        try {
+                          await addToLibrary(item.id, item.genre);
+                          Alert.alert('Added', 'The book was added to your library.');
+                          setAddOpen(false);
+                        } catch (e: any) {
+                          Alert.alert('Error', e?.message || 'Failed to add.');
+                        }
+                      }}
+                    >
+                      <Text style={styles.addRowBtnText}>Add</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -202,5 +240,91 @@ const styles = StyleSheet.create({
   },
   gridWrapper: {
     marginTop: 12,
+  },
+  addFab: {
+    position: 'absolute',
+    right: 16,
+    bottom: 24,
+    backgroundColor: '#4F46E5',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addFabText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 16,
+    maxHeight: '70%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+    color: '#111',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 8,
+  },
+  actionBtn: {
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  cancelBtn: {
+    backgroundColor: '#eee',
+  },
+  searchBtn: {
+    backgroundColor: '#4F46E5',
+  },
+  actionText: {
+    color: '#111',
+    fontWeight: '600',
+  },
+  resultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#eee',
+  },
+  resultTitle: {
+    fontSize: 15,
+    color: '#111',
+    fontWeight: '700',
+  },
+  resultMeta: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  addRowBtn: {
+    backgroundColor: '#4F46E5',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  addRowBtnText: {
+    color: 'white',
+    fontWeight: '700',
   },
 });
