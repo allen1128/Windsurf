@@ -47,7 +47,9 @@ const styles = StyleSheet.create({
   row: {
     gap: GAP,
     marginBottom: GAP,
+    alignItems: 'flex-start',
   },
   item: {
+    alignItems: 'flex-start',
   },
 });
