@@ -153,7 +153,6 @@ Troubleshooting (Web Demo)
 ```bash
 # From project root
 cd deployment
-
 export GOOGLE_BOOKS_API_KEY=your_key
 export OPENAI_API_KEY=your_key
 export AWS_ACCESS_KEY_ID=your_key

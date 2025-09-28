@@ -1,14 +1,17 @@
 package com.littlelibrary.service;
 
 import com.littlelibrary.dto.BookDTO;
+import com.littlelibrary.dto.AddToLibraryRequest;
 import com.littlelibrary.dto.ScanRequest;
 import com.littlelibrary.dto.AIRecommendationResponse;
 import com.littlelibrary.model.Book;
 import com.littlelibrary.model.Library;
 import com.littlelibrary.model.LibraryBook;
+import com.littlelibrary.model.User;
 import com.littlelibrary.repository.BookRepository;
 import com.littlelibrary.repository.LibraryRepository;
 import com.littlelibrary.repository.LibraryBookRepository;
+import com.littlelibrary.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +41,9 @@ public class BookService {
     
     @Autowired
     private OCRService ocrService;
+    
+    @Autowired
+    private UserRepository userRepository;
     
     public List<BookDTO> getUserLibraryBooks(Long userId, String filter) {
         // Mock implementation - return empty list for testing
@@ -102,6 +108,72 @@ public class BookService {
         book.setPersonalRating(0);
         
         return book;
+    }
+    
+    /**
+     * Upsert a book from the provided payload and add it to the user's library.
+     * If the book with the given ISBN doesn't exist, create it using the payload fields (no external calls).
+     */
+    public BookDTO addBookToLibrary(AddToLibraryRequest req, Long userId) {
+        if (req == null || req.getBook() == null) {
+            throw new IllegalArgumentException("Missing book payload");
+        }
+        BookDTO payload = req.getBook();
+        String rawIsbn = payload.getIsbn();
+        if (rawIsbn == null || rawIsbn.trim().isEmpty()) {
+            throw new IllegalArgumentException("ISBN is required in the book payload");
+        }
+        String normalizedIsbn = rawIsbn.replaceAll("[-\\s]", "");
+        
+        // Upsert book by ISBN
+        Optional<com.littlelibrary.model.Book> existing = bookRepository.findByIsbn(normalizedIsbn);
+        com.littlelibrary.model.Book entity = existing.orElseGet(() -> {
+            com.littlelibrary.model.Book b = new com.littlelibrary.model.Book();
+            b.setIsbn(normalizedIsbn);
+            b.setTitle(payload.getTitle());
+            b.setAuthor(payload.getAuthor());
+            b.setDescription(payload.getDescription());
+            b.setGenre(payload.getGenre());
+            b.setCoverImageUrl(payload.getCoverImageUrl());
+            b.setPublisher(payload.getPublisher());
+            b.setPublicationYear(payload.getPublicationYear());
+            b.setPageCount(payload.getPageCount());
+            b.setGoogleBooksId(payload.getGoogleBooksId());
+            return bookRepository.save(b);
+        });
+        
+        // Ensure user has a library
+        List<Library> libs = libraryRepository.findByUserId(userId);
+        Library library;
+        if (libs.isEmpty()) {
+            User user = userRepository.findById(userId).orElseGet(() -> {
+                // Create a placeholder user if not present (demo/testing)
+                User u = new User("Demo", "User", "demo@example.com", "password");
+                return userRepository.save(u);
+            });
+            library = new Library("Default Library", user);
+            library = libraryRepository.save(library);
+        } else {
+            library = libs.get(0);
+        }
+        
+        // Link book to library (upsert)
+        Optional<LibraryBook> existingLink = libraryBookRepository.findByLibraryIdAndBookId(library.getId(), entity.getId());
+        LibraryBook link;
+        if (existingLink.isPresent()) {
+            link = existingLink.get();
+        } else {
+            LibraryBook lb = new LibraryBook(library, entity);
+            link = libraryBookRepository.save(lb);
+        }
+        link.setGenreShelf(req.getGenreShelf() != null ? req.getGenreShelf() : "General");
+        link.setAgeShelf(req.getAgeShelf() != null ? req.getAgeShelf() : "");
+        libraryBookRepository.save(link);
+        
+        BookDTO dto = toDTO(entity);
+        dto.setGenreShelf(link.getGenreShelf());
+        dto.setAgeShelf(link.getAgeShelf());
+        return dto;
     }
     
     public boolean checkForDuplicate(String isbn, Long userId) {

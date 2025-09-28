@@ -1,6 +1,7 @@
 package com.littlelibrary.controller;
 
 import com.littlelibrary.dto.BookDTO;
+import com.littlelibrary.dto.AddToLibraryRequest;
 import com.littlelibrary.dto.ScanRequest;
 import com.littlelibrary.dto.AIRecommendationResponse;
 import com.littlelibrary.service.BookService;
@@ -43,6 +44,14 @@ public class BookController {
         
         BookDTO book = bookService.scanAndIdentifyBook(scanRequest, userId);
         return ResponseEntity.ok(book);
+    }
+
+    @PostMapping("/add-to-library")
+    public ResponseEntity<BookDTO> addToLibraryByPayload(@RequestBody AddToLibraryRequest request) {
+        // In a real app, get userId from JWT token
+        Long userId = 1L; // Placeholder
+        BookDTO result = bookService.addBookToLibrary(request, userId);
+        return ResponseEntity.ok(result);
     }
     
     @PostMapping("/{bookId}/add-to-library")

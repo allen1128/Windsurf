@@ -1,10 +1,19 @@
 package com.littlelibrary.dto;
 
 public class AddToLibraryRequest {
+    private BookDTO book;
     private String genreShelf;
     private String ageShelf;
     
     public AddToLibraryRequest() {}
+    
+    public BookDTO getBook() {
+        return book;
+    }
+    
+    public void setBook(BookDTO book) {
+        this.book = book;
+    }
     
     public String getGenreShelf() {
         return genreShelf;

@@ -39,7 +39,7 @@ export default function HomeScreen() {
   };
 
   // When lookup results don't have a backend id, generate a placeholder numeric id
-  const getBookIdForAdd = (item: any): number => {
+const getBookIdForAdd = (item: any): number => {
     if (item?.id != null) return Number(item.id);
     const raw = (item?.isbn13 || item?.isbn10 || '').toString().replace(/\D/g, '');
     if (raw.length > 0) {
@@ -60,11 +60,11 @@ export default function HomeScreen() {
     return (await res.json()) as Array<any>;
   };
 
-  const addToLibrary = async (bookId: number, genre?: string) => {
-    const res = await fetch(`${API_BASE}/${bookId}/add-to-library`, {
+  const addToLibraryByPayload = async (book: any, genre?: string) => {
+    const res = await fetch(`${API_BASE}/add-to-library`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ genreShelf: genre || 'General', ageShelf: '' }),
+      body: JSON.stringify({ book, genreShelf: genre || 'General', ageShelf: '' }),
     });
     if (!res.ok) {
       let bodyText = '';
@@ -97,8 +97,7 @@ export default function HomeScreen() {
               text: 'Add',
               onPress: async () => {
                 try {
-                  const targetId = getBookIdForAdd(b);
-                  await addToLibrary(targetId, b.genre);
+                  await addToLibraryByPayload(b, b.genre);
                   Alert.alert('Added', 'The book was added to your library.');
                 } catch (e: any) {
                   Alert.alert('Error', e?.message || 'Failed to add.');
@@ -187,8 +186,7 @@ export default function HomeScreen() {
                       style={styles.addRowBtn}
                       onPress={async () => {
                         try {
-                          const targetId = getBookIdForAdd(item);
-                          await addToLibrary(targetId, item.genre);
+                          await addToLibraryByPayload(item, item.genre);
                           Alert.alert('Added', 'The book was added to your library.');
                           setAddOpen(false);
                         } catch (e: any) {

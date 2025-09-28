@@ -1,6 +1,7 @@
 package com.littlelibrary.model;
 
 import jakarta.persistence.*;
+import jakarta.persistence.Lob;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
@@ -25,6 +26,8 @@ public class Book {
     @Column(unique = true)
     private String isbn;
     
+    @Lob
+    @Column(columnDefinition = "TEXT")
     private String description;
     
     @Size(max = 50)
