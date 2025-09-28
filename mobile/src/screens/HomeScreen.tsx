@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SearchBar from '../components/SearchBar';
 import BookshelfGrid from '../components/BookshelfGrid';
-import { MOCK_BOOKS } from '../mock/books';
+// import { MOCK_BOOKS } from '../mock/books'; // replaced by backend-loaded library
 import type { Book } from '../types';
 
 export default function HomeScreen() {
@@ -13,23 +13,52 @@ export default function HomeScreen() {
   const [searchText, setSearchText] = useState('');
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<Array<any>>([]);
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loadingLibrary, setLoadingLibrary] = useState(false);
 
   const genres = useMemo(() => {
     const unique = new Set<string>(['All']);
-    MOCK_BOOKS.forEach(b => unique.add(b.genre));
+    books.forEach(b => unique.add(b.genre));
     return Array.from(unique);
-  }, []);
+  }, [books]);
 
   const filtered: Book[] = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return MOCK_BOOKS.filter(b => {
+    return books.filter(b => {
       const matchesQuery = q.length === 0 ||
-        b.title.toLowerCase().includes(q) ||
-        b.author.toLowerCase().includes(q);
+        (b.title?.toLowerCase().includes(q)) ||
+        (b.author?.toLowerCase().includes(q));
       const matchesGenre = activeGenre === 'All' || b.genre === activeGenre;
       return matchesQuery && matchesGenre;
     });
-  }, [query, activeGenre]);
+  }, [books, query, activeGenre]);
+
+  // Load user's library from backend
+  const loadLibrary = async () => {
+    try {
+      setLoadingLibrary(true);
+      const res = await fetch(`${API_BASE}`);
+      if (!res.ok) throw new Error(`Load library failed (${res.status})`);
+      const data = await res.json();
+      const mapped: Book[] = (Array.isArray(data) ? data : []).map((d: any) => ({
+        id: String(d.id ?? d.isbn ?? Date.now()),
+        title: d.title ?? 'Untitled',
+        author: d.author ?? 'Unknown',
+        genre: d.genreShelf || d.genre || 'General',
+        coverUrl: (d.coverImageUrl || d.coverUrl)?.replace(/^http:\/\//, 'https://'),
+      }));
+      setBooks(mapped);
+    } catch (e) {
+      console.warn('Failed to load library', e);
+      setBooks([]);
+    } finally {
+      setLoadingLibrary(false);
+    }
+  };
+
+  useEffect(() => {
+    loadLibrary();
+  }, []);
 
   const API_BASE = 'http://localhost:8080/api/books';
 
@@ -99,6 +128,8 @@ const getBookIdForAdd = (item: any): number => {
                 try {
                   await addToLibraryByPayload(b, b.genre);
                   Alert.alert('Added', 'The book was added to your library.');
+                  // Refresh library list
+                  loadLibrary();
                 } catch (e: any) {
                   Alert.alert('Error', e?.message || 'Failed to add.');
                 }
@@ -189,6 +220,8 @@ const getBookIdForAdd = (item: any): number => {
                           await addToLibraryByPayload(item, item.genre);
                           Alert.alert('Added', 'The book was added to your library.');
                           setAddOpen(false);
+                          // Refresh library list
+                          loadLibrary();
                         } catch (e: any) {
                           Alert.alert('Error', e?.message || 'Failed to add.');
                         }

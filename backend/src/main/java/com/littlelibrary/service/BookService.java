@@ -46,8 +46,36 @@ public class BookService {
     private UserRepository userRepository;
     
     public List<BookDTO> getUserLibraryBooks(Long userId, String filter) {
-        // Mock implementation - return empty list for testing
-        return new ArrayList<>();
+        List<Library> libs = libraryRepository.findByUserId(userId);
+        if (libs.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Library library = libs.get(0);
+        List<LibraryBook> links;
+        if (filter != null && !filter.isBlank()) {
+            // Filter by shelf first if provided
+            links = libraryBookRepository.findByLibraryIdAndGenreShelf(library.getId(), filter);
+            if (links == null || links.isEmpty()) {
+                // Fallback to all links; we'll filter by book genre below
+                links = libraryBookRepository.findByLibraryId(library.getId());
+            }
+        } else {
+            links = libraryBookRepository.findByLibraryId(library.getId());
+        }
+
+        List<BookDTO> out = new ArrayList<>();
+        for (LibraryBook lb : links) {
+            BookDTO dto = toDTO(lb.getBook());
+            dto.setGenreShelf(lb.getGenreShelf());
+            dto.setAgeShelf(lb.getAgeShelf());
+            out.add(dto);
+        }
+        if (filter != null && !filter.isBlank()) {
+            out = out.stream()
+                .filter(b -> filter.equalsIgnoreCase(b.getGenreShelf() != null ? b.getGenreShelf() : b.getGenre()))
+                .collect(Collectors.toList());
+        }
+        return out;
     }
     
     public BookDTO scanAndIdentifyBook(ScanRequest scanRequest, Long userId) {
