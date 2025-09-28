@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator, FlatList, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator, FlatList, Image, Linking, Share } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import SearchBar from '../components/SearchBar';
 import BookshelfGrid from '../components/BookshelfGrid';
@@ -312,7 +312,40 @@ const getBookIdForAdd = (item: any): number => {
                         {selectedBook.pageCount ? ` • ${selectedBook.pageCount} pages` : ''}
                       </Text>
                     ) : null}
+                    {(selectedBook.genreShelf || selectedBook.ageShelf) ? (
+                      <Text style={styles.detailsMeta}>
+                        {selectedBook.genreShelf ? `Shelf: ${selectedBook.genreShelf}` : ''}
+                        {selectedBook.genreShelf && selectedBook.ageShelf ? '  •  ' : ''}
+                        {selectedBook.ageShelf ? `Ages: ${selectedBook.ageShelf}` : ''}
+                      </Text>
+                    ) : null}
                   </View>
+                </View>
+
+                {/* Actions */}
+                <View style={styles.actionsRow}>
+                  <TouchableOpacity
+                    style={[styles.actionChip]}
+                    onPress={async () => {
+                      try {
+                        const msg = `${selectedBook.title}${selectedBook.author ? ` — ${selectedBook.author}` : ''}${selectedBook.isbn ? `\nISBN: ${selectedBook.isbn}` : ''}`;
+                        await Share.share({ message: msg });
+                      } catch {}
+                    }}
+                  >
+                    <Text style={styles.actionChipText}>Share</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionChip]}
+                    onPress={() => {
+                      const url = selectedBook.isbn
+                        ? `https://books.google.com/books?vid=ISBN${selectedBook.isbn}`
+                        : `https://www.google.com/search?q=${encodeURIComponent(selectedBook.title + ' ' + (selectedBook.author || ''))}`;
+                      Linking.openURL(url).catch(() => {});
+                    }}
+                  >
+                    <Text style={styles.actionChipText}>Open in Google Books</Text>
+                  </TouchableOpacity>
                 </View>
 
                 {selectedBook.description ? (
@@ -457,6 +490,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#333',
     lineHeight: 20,
+  },
+  // Actions row under the top details
+  actionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14,
+  },
+  actionChip: {
+    backgroundColor: '#f0f0f5',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#ddd',
+  },
+  actionChipText: {
+    color: '#111',
+    fontWeight: '700',
+    fontSize: 12,
   },
   addFab: {
     position: 'absolute',
