@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator, FlatList } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator, FlatList, Image } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import SearchBar from '../components/SearchBar';
 import BookshelfGrid from '../components/BookshelfGrid';
 // import { MOCK_BOOKS } from '../mock/books'; // replaced by backend-loaded library
 import type { Book } from '../types';
 
 export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   // Store canonical genre key (lowercased). 'all' means no filter.
   const [activeGenre, setActiveGenre] = useState<string>('all');
@@ -16,6 +17,8 @@ export default function HomeScreen() {
   const [results, setResults] = useState<Array<any>>([]);
   const [books, setBooks] = useState<Book[]>([]);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
   // Helpers to canonicalize genre
   const normalizeGenre = (s?: string) => {
@@ -72,6 +75,13 @@ export default function HomeScreen() {
         author: d.author ?? 'Unknown',
         genre: d.genreShelf || d.genre || 'General',
         coverUrl: (d.coverImageUrl || d.coverUrl)?.replace(/^http:\/\//, 'https://'),
+        isbn: d.isbn,
+        description: d.description,
+        publisher: d.publisher,
+        publicationYear: d.publicationYear,
+        pageCount: d.pageCount,
+        genreShelf: d.genreShelf,
+        ageShelf: d.ageShelf,
       }));
       setBooks(mapped);
     } catch (e) {
@@ -192,7 +202,13 @@ const getBookIdForAdd = (item: any): number => {
       </View>
 
       <View style={styles.gridWrapper}>
-        <BookshelfGrid books={filtered} onPressBook={(b) => console.log('Pressed', b.title)} />
+        <BookshelfGrid
+          books={filtered}
+          onPressBook={(b) => {
+            setSelectedBook(b);
+            setDetailsOpen(true);
+          }}
+        />
       </View>
 
       {/* Add button (FAB) */}
@@ -262,6 +278,54 @@ const getBookIdForAdd = (item: any): number => {
           </View>
         </View>
       </Modal>
+
+      {/* Book Details Modal */}
+      <Modal visible={detailsOpen} animationType="slide" onRequestClose={() => setDetailsOpen(false)}>
+        <SafeAreaView style={styles.detailsContainer}>
+          <View style={[styles.detailsHeader, { paddingTop: insets.top + 6 }]}>
+            <View style={{ width: 60 }}>
+              <TouchableOpacity onPress={() => setDetailsOpen(false)} style={styles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Text style={styles.backBtnText}>Back</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.detailsTitle} numberOfLines={1}>Book Details</Text>
+            <View style={{ width: 60 }} />
+          </View>
+          <ScrollView contentContainerStyle={styles.detailsContent} showsVerticalScrollIndicator>
+            {selectedBook && (
+              <>
+                <View style={styles.detailsTopRow}>
+                  <Image
+                    source={{ uri: selectedBook.coverUrl || 'https://via.placeholder.com/200x300?text=Book' }}
+                    style={styles.detailsCover}
+                  />
+                  <View style={{ flex: 1, marginLeft: 14 }}>
+                    <Text style={styles.detailsBookTitle}>{selectedBook.title}</Text>
+                    <Text style={styles.detailsAuthor}>{selectedBook.author || 'Unknown'}</Text>
+                    <Text style={styles.detailsMeta}>
+                      {toTitleCase(selectedBook.genre || 'General')}
+                      {selectedBook.isbn ? `  •  ISBN ${selectedBook.isbn}` : ''}
+                    </Text>
+                    {selectedBook.publisher || selectedBook.publicationYear ? (
+                      <Text style={styles.detailsMeta}>
+                        {(selectedBook.publisher || '') + (selectedBook.publicationYear ? `, ${selectedBook.publicationYear}` : '')}
+                        {selectedBook.pageCount ? ` • ${selectedBook.pageCount} pages` : ''}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+
+                {selectedBook.description ? (
+                  <View style={{ marginTop: 16 }}>
+                    <Text style={styles.sectionTitle}>Description</Text>
+                    <Text style={styles.descriptionText}>{selectedBook.description}</Text>
+                  </View>
+                ) : null}
+              </>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -326,6 +390,72 @@ const styles = StyleSheet.create({
   },
   gridWrapper: {
     marginTop: 12,
+  },
+  // Details modal styles
+  detailsContainer: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+  detailsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e5e7eb',
+  },
+  backBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  backBtnText: {
+    color: '#4F46E5',
+    fontWeight: '700',
+  },
+  detailsTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#111',
+  },
+  detailsContent: {
+    padding: 16,
+  },
+  detailsTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  detailsCover: {
+    width: 120,
+    height: 180,
+    borderRadius: 8,
+    backgroundColor: '#eee',
+  },
+  detailsBookTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111',
+  },
+  detailsAuthor: {
+    fontSize: 14,
+    color: '#444',
+    marginTop: 4,
+  },
+  detailsMeta: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 6,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111',
+    marginBottom: 6,
+  },
+  descriptionText: {
+    fontSize: 13,
+    color: '#333',
+    lineHeight: 20,
   },
   addFab: {
     position: 'absolute',

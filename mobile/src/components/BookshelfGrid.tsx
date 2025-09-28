@@ -34,7 +34,7 @@ export default function BookshelfGrid({ books, onPressBook }: BookshelfGridProps
       numColumns={NUM_COLUMNS}
       contentContainerStyle={styles.content}
       columnWrapperStyle={styles.row}
-      showsVerticalScrollIndicator={false}
+      showsVerticalScrollIndicator={true}
     />
   );
 }
