@@ -20,6 +20,7 @@ export type BookshelfGridProps = {
 };
 
 export default function BookshelfGrid({ books, onPressBook }: BookshelfGridProps) {
+
   const renderItem = ({ item }: ListRenderItemInfo<Book>) => (
     <View style={[styles.item, { width: getItemWidth() }]}> 
       <BookCard book={item} onPress={onPressBook} />
@@ -42,7 +43,7 @@ export default function BookshelfGrid({ books, onPressBook }: BookshelfGridProps
 const styles = StyleSheet.create({
   content: {
     paddingHorizontal: SCREEN_PADDING,
-    paddingBottom: 120,
+    paddingBottom: 160,
   },
   row: {
     gap: GAP,

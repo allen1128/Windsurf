@@ -390,6 +390,7 @@ const styles = StyleSheet.create({
   },
   gridWrapper: {
     marginTop: 12,
+    flex: 1,
   },
   // Details modal styles
   detailsContainer: {
