@@ -281,8 +281,8 @@ const getBookIdForAdd = (item: any): number => {
 
       {/* Book Details Modal */}
       <Modal visible={detailsOpen} animationType="slide" onRequestClose={() => setDetailsOpen(false)}>
-        <SafeAreaView style={styles.detailsContainer}>
-          <View style={[styles.detailsHeader, { paddingTop: insets.top + 6 }]}>
+        <SafeAreaView style={styles.detailsContainer} edges={['left','right']}>
+          <View style={[styles.detailsHeader, { paddingTop: insets.top }] }>
             <View style={{ width: 60 }}>
               <TouchableOpacity onPress={() => setDetailsOpen(false)} style={styles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <Text style={styles.backBtnText}>Back</Text>
