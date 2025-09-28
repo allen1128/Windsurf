@@ -38,6 +38,17 @@ export default function HomeScreen() {
     return /^\d{9}[\dXx]$/.test(s) || /^\d{13}$/.test(s);
   };
 
+  // When lookup results don't have a backend id, generate a placeholder numeric id
+  const getBookIdForAdd = (item: any): number => {
+    if (item?.id != null) return Number(item.id);
+    const raw = (item?.isbn13 || item?.isbn10 || '').toString().replace(/\D/g, '');
+    if (raw.length > 0) {
+      // Use the last 9 digits to keep it within a safe integer range
+      return Number(raw.slice(-9));
+    }
+    return Date.now();
+  };
+
   const lookupBooks = async (q: string) => {
     const controller = new AbortController();
     const params = isISBN(q) ? `?isbn=${encodeURIComponent(q)}` : `?title=${encodeURIComponent(q)}`;
@@ -55,7 +66,13 @@ export default function HomeScreen() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ genreShelf: genre || 'General', ageShelf: '' }),
     });
-    if (!res.ok) throw new Error(`Add to library failed (${res.status})`);
+    if (!res.ok) {
+      let bodyText = '';
+      try {
+        bodyText = await res.text();
+      } catch {}
+      throw new Error(`Add to library failed (${res.status}): ${bodyText || 'no response body'}`);
+    }
     return await res.json();
   };
 
@@ -80,7 +97,8 @@ export default function HomeScreen() {
               text: 'Add',
               onPress: async () => {
                 try {
-                  await addToLibrary(b.id, b.genre);
+                  const targetId = getBookIdForAdd(b);
+                  await addToLibrary(targetId, b.genre);
                   Alert.alert('Added', 'The book was added to your library.');
                 } catch (e: any) {
                   Alert.alert('Error', e?.message || 'Failed to add.');
@@ -150,7 +168,14 @@ export default function HomeScreen() {
             {results.length > 0 && (
               <FlatList
                 data={results}
-                keyExtractor={(item) => String(item.id)}
+                keyExtractor={(item, index) => {
+                  if (item?.id != null) return String(item.id);
+                  const isbn = item?.isbn13 || item?.isbn10;
+                  if (isbn) return String(isbn);
+                  const title = item?.title || 'untitled';
+                  const author = item?.author || 'unknown';
+                  return `${title}-${author}-${index}`;
+                }}
                 contentContainerStyle={{ paddingTop: 8 }}
                 renderItem={({ item }) => (
                   <View style={styles.resultRow}>
@@ -162,7 +187,8 @@ export default function HomeScreen() {
                       style={styles.addRowBtn}
                       onPress={async () => {
                         try {
-                          await addToLibrary(item.id, item.genre);
+                          const targetId = getBookIdForAdd(item);
+                          await addToLibrary(targetId, item.genre);
                           Alert.alert('Added', 'The book was added to your library.');
                           setAddOpen(false);
                         } catch (e: any) {
