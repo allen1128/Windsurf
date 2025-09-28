@@ -37,40 +37,54 @@ export default function HomeScreen() {
       setRecsError(null);
       try {
         let items: any[] = [];
-        if (selectedBook.id && /^\d+$/.test(String(selectedBook.id))) {
-          const res = await fetch(`${API_BASE}/${selectedBook.id}/recommendations`);
-          if (res.ok) {
-            const json = await res.json();
-            items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+        if (selectedBook) {
+          try {
+            const payload: any = {
+              title: selectedBook.title || '',
+              description: selectedBook.description || '',
+              author: selectedBook.author || '',
+              genre: selectedBook.genre || '',
+              publisher: selectedBook.publisher || '',
+              publicationYear: selectedBook.publicationYear ?? null,
+              pageCount: selectedBook.pageCount ?? null,
+              genreShelf: selectedBook.genreShelf || '',
+              ageShelf: selectedBook.ageShelf || '',
+            };
+            if (selectedBook.id && /^\d+$/.test(String(selectedBook.id))) {
+              payload.bookId = Number(selectedBook.id);
+            }
+            if (selectedBook.isbn) {
+              payload.isbn = selectedBook.isbn;
+            }
+            const res = await fetch(`${API_BASE}/recommendations/query`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            if (res.ok) {
+              const json = await res.json();
+              // Prefer backend-provided similarBooks (server handles fallback and filtering)
+              if (Array.isArray(json?.similarBooks)) {
+                const normalized = json.similarBooks.map((b: any) => ({
+                  ...b,
+                  // normalize to a single field and force https
+                  coverUrl: ((b.coverImageUrl || b.coverUrl) ?? '').replace(/^http:\/\//, 'https://'),
+                }));
+                setRecs(normalized);
+              }
+            } else {
+              // Surface server error to UI for easier debugging
+              let msg = '';
+              try {
+                msg = await res.text();
+              } catch {}
+              throw new Error(msg || `Recommendations failed (${res.status})`);
+            }
+          } catch (e: any) {
+            setRecsError(e?.message || 'Failed to load recommendations');
+            setRecs([]);
           }
         }
-        if ((!items || items.length === 0) && selectedBook.title) {
-          // Fallback: lookup by title
-          try {
-            const found = await lookupBooks(selectedBook.title);
-            items = (found || []).filter((it: any) => (it?.isbn || it?.isbn13 || it?.isbn10) !== selectedBook.isbn);
-          } catch {}
-        }
-        const mapped: Book[] = (items || []).map((d: any) => ({
-          id: String(d.id ?? d.isbn ?? Date.now()),
-          title: d.title ?? 'Untitled',
-          author: d.author ?? 'Unknown',
-          genre: d.genreShelf || d.genre || 'General',
-          coverUrl: (d.coverImageUrl || d.coverUrl)?.replace(/^http:\/\//, 'https://'),
-          isbn: d.isbn || d.isbn13 || d.isbn10,
-          description: d.description,
-          publisher: d.publisher,
-          publicationYear: d.publicationYear,
-          pageCount: d.pageCount,
-          genreShelf: d.genreShelf,
-          ageShelf: d.ageShelf,
-        }));
-        // Filter out the same book by id/isbn
-        const uniq = mapped.filter((m) => m.id !== selectedBook.id && m.isbn !== selectedBook.isbn);
-        setRecs(uniq.slice(0, 12));
-      } catch (e: any) {
-        setRecsError(e?.message || 'Failed to load recommendations');
-        setRecs([]);
       } finally {
         setRecsLoading(false);
       }

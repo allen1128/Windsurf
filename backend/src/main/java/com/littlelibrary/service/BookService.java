@@ -77,6 +77,14 @@ public class BookService {
         }
         return out;
     }
+
+    /**
+     * Retrieve a BookDTO by internal id, if present.
+     */
+    public Optional<BookDTO> findBookDTOById(Long id) {
+        if (id == null) return Optional.empty();
+        return bookRepository.findById(id).map(this::toDTO);
+    }
     
     public BookDTO scanAndIdentifyBook(ScanRequest scanRequest, Long userId) {
         try {
@@ -261,6 +269,17 @@ public class BookService {
         response.setReadingLevel("Elementary");
         response.setReasoning("Great introduction to fantasy literature for children. Teaches about friendship, courage, and perseverance.");
         return response;
+    }
+
+    /**
+     * Variant that accepts ISBN. For now returns the same mocked structure.
+     * In a real implementation, look up the book by ISBN and derive recommendations.
+     */
+    public AIRecommendationResponse getAIRecommendationsByIsbn(String isbn) {
+        // Normalize ISBN if needed, then compute recommendations.
+        String normalized = isbn != null ? isbn.replaceAll("[-\\s]", "") : "";
+        // For now reuse the same mock as getAIRecommendations
+        return getAIRecommendations(0L);
     }
     
 }

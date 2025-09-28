@@ -39,6 +39,8 @@ cp .env.example .env
 # Or run with PostgreSQL (production-like)
 # First start PostgreSQL and create database 'littlelibrary'
 ./mvnw spring-boot:run
+OR
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 The backend will start on http://localhost:8080
@@ -56,6 +58,9 @@ cd ios && pod install && cd ..
 
 # Run on iOS
 npx react-native run-ios
+
+# Run on iOS simulator with a specific simulator
+npx react-native run-ios --simulator "iPhone 15"
 
 # Or run on Android
 npx react-native run-android

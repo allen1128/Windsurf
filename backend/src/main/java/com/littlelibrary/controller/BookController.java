@@ -4,7 +4,9 @@ import com.littlelibrary.dto.BookDTO;
 import com.littlelibrary.dto.AddToLibraryRequest;
 import com.littlelibrary.dto.ScanRequest;
 import com.littlelibrary.dto.AIRecommendationResponse;
+import com.littlelibrary.dto.RecommendationQuery;
 import com.littlelibrary.service.BookService;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -85,6 +87,43 @@ public class BookController {
         AIRecommendationResponse recommendations = bookService.getAIRecommendations(bookId);
         return ResponseEntity.ok(recommendations);
     }
+
+    /**
+     * Query-param variant to disambiguate id vs isbn.
+     * Example:
+     *   /api/books/recommendations?by=id&value=123
+     *   /api/books/recommendations?by=isbn&value=9780439708180
+     */
+    @GetMapping("/recommendations")
+    public ResponseEntity<AIRecommendationResponse> getRecommendationsBy(
+            @RequestParam(name = "by", required = false) String by,
+            @RequestParam(name = "value", required = false) String value,
+            @RequestParam(name = "title", required = false) String title) {
+        // Prefer explicit id/isbn routing when provided
+        if (by != null && !by.isBlank() && value != null && !value.isBlank()) {
+            if ("id".equalsIgnoreCase(by)) {
+                try {
+                    Long id = Long.parseLong(value);
+                    return ResponseEntity.ok(bookService.getAIRecommendations(id));
+                } catch (NumberFormatException ex) {
+                    // fall through to title if present
+                }
+            } else if ("isbn".equalsIgnoreCase(by)) {
+                return ResponseEntity.ok(bookService.getAIRecommendationsByIsbn(value));
+            }
+        }
+
+        // Backend-side fallback by title (optional)
+        if (title != null && !title.isBlank()) {
+            List<BookDTO> found = bookService.lookupBooks(null, title);
+            if (found != null && !found.isEmpty() && found.get(0).getIsbn() != null) {
+                return ResponseEntity.ok(bookService.getAIRecommendationsByIsbn(found.get(0).getIsbn()));
+            }
+            return ResponseEntity.badRequest().build();
+        }
+
+        return ResponseEntity.badRequest().build();
+    }
     
     @GetMapping("/search")
     public ResponseEntity<List<BookDTO>> searchBooks(@RequestParam String query) {
@@ -101,5 +140,51 @@ public class BookController {
         }
         List<BookDTO> books = bookService.lookupBooks(isbn, title);
         return ResponseEntity.ok(books);
+    }
+
+    /**
+     * Object-based variant: frontend sends an object with optional fields (bookId, isbn, title),
+     * and backend decides how to compute recommendations.
+     */
+    @PostMapping("/recommendations/query")
+    public ResponseEntity<AIRecommendationResponse> getRecommendationsQuery(@RequestBody RecommendationQuery query) {
+        if (query == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        AIRecommendationResponse resp = null;
+
+        // 1) Compute AI signals via id or isbn if available
+        if (query.getBookId() != null) {
+            resp = bookService.getAIRecommendations(query.getBookId());
+        } else if (query.getIsbn() != null && !query.getIsbn().isBlank()) {
+            resp = bookService.getAIRecommendationsByIsbn(query.getIsbn());
+        } else {
+            resp = new AIRecommendationResponse();
+        }
+
+        // Resolve source ISBN for deduplication (prefer explicit ISBN, else lookup by id)
+        String sourceIsbn = query.getIsbn();
+        // 2) Populate similarBooks using title (server-side fallback)
+        if (query.getTitle() != null && !query.getTitle().isBlank()) {
+            List<BookDTO> found = bookService.lookupBooks(null, query.getTitle());
+            if (found != null && !found.isEmpty()) {
+                // filter: valid image and not the same ISBN as the source, limit to 12
+                final String srcIsbnFinal = sourceIsbn;
+                List<BookDTO> filtered = found.stream()
+                    .filter(b -> b.getIsbn() != null && (srcIsbnFinal == null || !b.getIsbn().replaceAll("[-\\s]", "").equals(srcIsbnFinal)))
+                    .filter(b -> hasValidImage(b.getCoverImageUrl()))
+                    .limit(12)
+                    .collect(Collectors.toList());
+                resp.setSimilarBooks(filtered);
+            }
+        }
+
+        return ResponseEntity.ok(resp);
+    }
+    
+    private boolean hasValidImage(String url) {
+        if (url == null || url.isBlank()) return false;
+        String u = url.trim().toLowerCase();
+        return u.startsWith("http://") || u.startsWith("https://");
     }
 }
