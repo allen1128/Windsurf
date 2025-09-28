@@ -8,7 +8,8 @@ import type { Book } from '../types';
 
 export default function HomeScreen() {
   const [query, setQuery] = useState('');
-  const [activeGenre, setActiveGenre] = useState<string>('All');
+  // Store canonical genre key (lowercased). 'all' means no filter.
+  const [activeGenre, setActiveGenre] = useState<string>('all');
   const [addOpen, setAddOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [searching, setSearching] = useState(false);
@@ -16,11 +17,36 @@ export default function HomeScreen() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
 
-  const genres = useMemo(() => {
-    const unique = new Set<string>(['All']);
-    books.forEach(b => unique.add(b.genre));
-    return Array.from(unique);
+  // Helpers to canonicalize genre
+  const normalizeGenre = (s?: string) => {
+    const key = (s || '').trim().toLowerCase();
+    return key.length === 0 ? 'general' : key;
+  };
+
+  // Title Case helper for display labels
+  const toTitleCase = (s: string) =>
+    s
+      .toLowerCase()
+      .split(/\s+/)
+      .map(w => (w ? w[0].toUpperCase() + w.slice(1) : w))
+      .join(' ');
+
+  // Build map: canonical key -> display label (first seen)
+  const genreMap = useMemo(() => {
+    const m = new Map<string, string>();
+    books.forEach(b => {
+      const key = normalizeGenre(b.genre);
+      if (!m.has(key)) m.set(key, toTitleCase(b.genre || 'General'));
+    });
+    return m;
   }, [books]);
+
+  // Chips list: include All first, then mapped genres
+  const genres = useMemo(() => {
+    const arr: Array<{ key: string; label: string }> = [{ key: 'all', label: 'All' }];
+    genreMap.forEach((label, key) => arr.push({ key, label }));
+    return arr;
+  }, [genreMap]);
 
   const filtered: Book[] = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -28,7 +54,7 @@ export default function HomeScreen() {
       const matchesQuery = q.length === 0 ||
         (b.title?.toLowerCase().includes(q)) ||
         (b.author?.toLowerCase().includes(q));
-      const matchesGenre = activeGenre === 'All' || b.genre === activeGenre;
+      const matchesGenre = activeGenre === 'all' || normalizeGenre(b.genre) === activeGenre;
       return matchesQuery && matchesGenre;
     });
   }, [books, query, activeGenre]);
@@ -153,17 +179,17 @@ const getBookIdForAdd = (item: any): number => {
       </View>
 
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips} contentContainerStyle={styles.chipsContent}>
+      <View style={[styles.chips, styles.chipsContent]}>
         {genres.map(g => (
           <TouchableOpacity
-            key={g}
-            onPress={() => setActiveGenre(g)}
-            style={[styles.chip, activeGenre === g && styles.chipActive]}
+            key={g.key}
+            onPress={() => setActiveGenre(g.key)}
+            style={[styles.chip, activeGenre === g.key && styles.chipActive]}
           >
-            <Text style={[styles.chipText, activeGenre === g && styles.chipTextActive]}>{g}</Text>
+            <Text style={[styles.chipText, activeGenre === g.key && styles.chipTextActive]}>{g.label}</Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
       <View style={styles.gridWrapper}>
         <BookshelfGrid books={filtered} onPressBook={(b) => console.log('Pressed', b.title)} />
@@ -270,7 +296,10 @@ const styles = StyleSheet.create({
   chipsContent: {
     paddingHorizontal: 12,
     gap: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
+    justifyContent: 'flex-start',
   },
   chip: {
     paddingHorizontal: 10,
