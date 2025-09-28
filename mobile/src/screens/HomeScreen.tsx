@@ -19,12 +19,64 @@ export default function HomeScreen() {
   const [loadingLibrary, setLoadingLibrary] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [recsLoading, setRecsLoading] = useState(false);
+  const [recsError, setRecsError] = useState<string | null>(null);
+  const [recs, setRecs] = useState<Book[]>([]);
 
   // Helpers to canonicalize genre
   const normalizeGenre = (s?: string) => {
     const key = (s || '').trim().toLowerCase();
     return key.length === 0 ? 'general' : key;
   };
+
+  // Fetch recommendations when opening details
+  useEffect(() => {
+    const run = async () => {
+      if (!detailsOpen || !selectedBook) return;
+      setRecsLoading(true);
+      setRecsError(null);
+      try {
+        let items: any[] = [];
+        if (selectedBook.id && /^\d+$/.test(String(selectedBook.id))) {
+          const res = await fetch(`${API_BASE}/${selectedBook.id}/recommendations`);
+          if (res.ok) {
+            const json = await res.json();
+            items = Array.isArray(json) ? json : (Array.isArray(json?.items) ? json.items : []);
+          }
+        }
+        if ((!items || items.length === 0) && selectedBook.title) {
+          // Fallback: lookup by title
+          try {
+            const found = await lookupBooks(selectedBook.title);
+            items = (found || []).filter((it: any) => (it?.isbn || it?.isbn13 || it?.isbn10) !== selectedBook.isbn);
+          } catch {}
+        }
+        const mapped: Book[] = (items || []).map((d: any) => ({
+          id: String(d.id ?? d.isbn ?? Date.now()),
+          title: d.title ?? 'Untitled',
+          author: d.author ?? 'Unknown',
+          genre: d.genreShelf || d.genre || 'General',
+          coverUrl: (d.coverImageUrl || d.coverUrl)?.replace(/^http:\/\//, 'https://'),
+          isbn: d.isbn || d.isbn13 || d.isbn10,
+          description: d.description,
+          publisher: d.publisher,
+          publicationYear: d.publicationYear,
+          pageCount: d.pageCount,
+          genreShelf: d.genreShelf,
+          ageShelf: d.ageShelf,
+        }));
+        // Filter out the same book by id/isbn
+        const uniq = mapped.filter((m) => m.id !== selectedBook.id && m.isbn !== selectedBook.isbn);
+        setRecs(uniq.slice(0, 12));
+      } catch (e: any) {
+        setRecsError(e?.message || 'Failed to load recommendations');
+        setRecs([]);
+      } finally {
+        setRecsLoading(false);
+      }
+    };
+    run();
+  }, [detailsOpen, selectedBook]);
 
   // Title Case helper for display labels
   const toTitleCase = (s: string) =>
@@ -354,6 +406,55 @@ const getBookIdForAdd = (item: any): number => {
                     <Text style={styles.descriptionText}>{selectedBook.description}</Text>
                   </View>
                 ) : null}
+
+                {/* Recommendations */}
+                <View style={{ marginTop: 18 }}>
+                  <Text style={styles.sectionTitle}>Recommended for you</Text>
+                  {recsLoading ? (
+                    <ActivityIndicator style={{ marginTop: 8 }} />
+                  ) : recsError ? (
+                    <Text style={styles.detailsMeta}>{recsError}</Text>
+                  ) : recs.length > 0 ? (
+                    <FlatList
+                      data={recs}
+                      keyExtractor={(b, index) => {
+                        if (b?.id) return String(b.id) + '-' + index;
+                        if (b?.isbn) return String(b.isbn) + '-' + index;
+                        const t = b?.title || 'untitled';
+                        const a = b?.author || 'unknown';
+                        return `${t}-${a}-${index}`;
+                      }}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ paddingVertical: 6, gap: 12 }}
+                      renderItem={({ item }) => (
+                        <View style={styles.recItem}>
+                          <TouchableOpacity onPress={() => setSelectedBook(item)}>
+                            <Image source={{ uri: item.coverUrl || 'https://via.placeholder.com/120x180?text=Book' }} style={styles.recCover} />
+                          </TouchableOpacity>
+                          <Text style={styles.recTitle} numberOfLines={2}>{item.title}</Text>
+                          <Text style={styles.recAuthor} numberOfLines={1}>{item.author || 'Unknown'}</Text>
+                          <TouchableOpacity
+                            style={styles.recAddBtn}
+                            onPress={async () => {
+                              try {
+                                await addToLibraryByPayload(item, item.genre);
+                                Alert.alert('Added', 'The book was added to your library.');
+                                loadLibrary();
+                              } catch (e: any) {
+                                Alert.alert('Error', e?.message || 'Failed to add.');
+                              }
+                            }}
+                          >
+                            <Text style={styles.recAddBtnText}>Add</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    />
+                  ) : (
+                    <Text style={styles.detailsMeta}>No recommendations yet.</Text>
+                  )}
+                </View>
               </>
             )}
           </ScrollView>
@@ -510,6 +611,38 @@ const styles = StyleSheet.create({
     color: '#111',
     fontWeight: '700',
     fontSize: 12,
+  },
+  recItem: {
+    width: 120,
+  },
+  recCover: {
+    width: 120,
+    height: 180,
+    borderRadius: 8,
+    backgroundColor: '#eee',
+  },
+  recTitle: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#111',
+  },
+  recAuthor: {
+    fontSize: 11,
+    color: '#666',
+  },
+  recAddBtn: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: '#4F46E5',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  recAddBtnText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 11,
   },
   addFab: {
     position: 'absolute',
