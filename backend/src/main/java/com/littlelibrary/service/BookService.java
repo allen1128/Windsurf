@@ -253,7 +253,11 @@ public class BookService {
         if (title != null && !title.trim().isEmpty()) {
             List<com.littlelibrary.model.Book> results = googleBooksService.searchBooksByTitle(title.trim());
             for (com.littlelibrary.model.Book model : results) {
-                out.add(toDTO(model));
+                BookDTO dto = toDTO(model);
+                String i = dto.getIsbn();
+                if (i != null && !i.trim().isEmpty()) {
+                    out.add(dto);
+                }
             }
         }
         return out;
