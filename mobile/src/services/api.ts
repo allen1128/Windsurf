@@ -63,3 +63,18 @@ export async function addToLibrary(book: BackendBookDTO, shelves: string[]): Pro
     console.warn('addToLibrary failed (mock no-op)', e);
   }
 }
+
+/**
+ * Remove a book from the user's library by internal book id.
+ */
+export async function removeFromLibraryById(bookId: number | string): Promise<void> {
+  const url = `${BASE_URL}/api/books/${encodeURIComponent(String(bookId))}/remove-from-library`;
+  const res = await fetch(url, { method: 'DELETE' });
+  if (!res.ok && res.status !== 204) {
+    let msg = '';
+    try { msg = await res.text(); } catch {}
+    throw new Error(msg || `Remove by id failed (${res.status})`);
+  }
+}
+
+ 

@@ -4,7 +4,6 @@ import com.littlelibrary.dto.BookDTO;
 import com.littlelibrary.dto.AddToLibraryRequest;
 import com.littlelibrary.dto.ScanRequest;
 import com.littlelibrary.dto.AIRecommendationResponse;
-import com.littlelibrary.model.Book;
 import com.littlelibrary.model.Library;
 import com.littlelibrary.model.LibraryBook;
 import com.littlelibrary.model.User;
@@ -211,6 +210,21 @@ public class BookService {
         dto.setAgeShelf(link.getAgeShelf());
         return dto;
     }
+
+    /**
+     * Remove a book from the user's library by book id. Idempotent.
+     */
+    public void removeBookFromLibrary(Long userId, Long bookId) {
+        if (userId == null || bookId == null) return;
+        // Ensure user has a library
+        List<Library> libs = libraryRepository.findByUserId(userId);
+        if (libs.isEmpty()) return;
+        Library library = libs.get(0);
+        libraryBookRepository.findByLibraryIdAndBookId(library.getId(), bookId)
+            .ifPresent(libraryBookRepository::delete);
+    }
+
+    
     
     public boolean checkForDuplicate(String isbn, Long userId) {
         // Mock implementation - always return false for testing
@@ -247,6 +261,7 @@ public class BookService {
 
     private BookDTO toDTO(com.littlelibrary.model.Book b) {
         BookDTO dto = new BookDTO();
+        dto.setId(b.getId());
         dto.setTitle(b.getTitle());
         dto.setAuthor(b.getAuthor());
         dto.setIsbn(b.getIsbn());

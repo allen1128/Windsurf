@@ -143,6 +143,19 @@ public class BookController {
     }
 
     /**
+     * Remove a book from the user's library by internal book id.
+     * Idempotent: returns 204 whether or not a link existed.
+     */
+    @DeleteMapping("/{bookId}/remove-from-library")
+    public ResponseEntity<Void> removeFromLibrary(@PathVariable Long bookId) {
+        Long userId = 1L; // Placeholder until JWT auth is added
+        bookService.removeBookFromLibrary(userId, bookId);
+        return ResponseEntity.noContent().build();
+    }
+
+    
+
+    /**
      * Object-based variant: frontend sends an object with optional fields (bookId, isbn, title),
      * and backend decides how to compute recommendations.
      */
@@ -163,13 +176,12 @@ public class BookController {
         }
 
         // Resolve source ISBN for deduplication (prefer explicit ISBN, else lookup by id)
-        String sourceIsbn = query.getIsbn();
         // 2) Populate similarBooks using title (server-side fallback)
         if (query.getTitle() != null && !query.getTitle().isBlank()) {
             List<BookDTO> found = bookService.lookupBooks(null, query.getTitle());
             if (found != null && !found.isEmpty()) {
                 // filter: valid image and not the same ISBN as the source, limit to 12
-                final String srcIsbnFinal = sourceIsbn;
+                final String srcIsbnFinal = query.getIsbn();
                 List<BookDTO> filtered = found.stream()
                     .filter(b -> b.getIsbn() != null && (srcIsbnFinal == null || !b.getIsbn().replaceAll("[-\\s]", "").equals(srcIsbnFinal)))
                     .filter(b -> hasValidImage(b.getCoverImageUrl()))

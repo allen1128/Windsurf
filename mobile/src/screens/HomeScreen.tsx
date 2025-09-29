@@ -164,6 +164,20 @@ export default function HomeScreen() {
 
   const API_BASE = 'http://localhost:8080/api/books';
 
+  // Remove from library helper (requires numeric id)
+  const removeFromLibrary = async (b: Book) => {
+    if (!(b.id && /^\d+$/.test(String(b.id)))) {
+      throw new Error('Missing numeric book id to remove');
+    }
+    const url = `${API_BASE}/${encodeURIComponent(String(b.id))}/remove-from-library`;
+    const res = await fetch(url, { method: 'DELETE' });
+    if (!res.ok && res.status !== 204) {
+      let msg = '';
+      try { msg = await res.text(); } catch {}
+      throw new Error(msg || `Remove failed (${res.status})`);
+    }
+  };
+
   const isISBN = (txt: string) => {
     const s = txt.replace(/[-\s]/g, '');
     return /^\d{9}[\dXx]$/.test(s) || /^\d{13}$/.test(s);
@@ -411,6 +425,44 @@ const getBookIdForAdd = (item: any): number => {
                     }}
                   >
                     <Text style={styles.actionChipText}>Open in Google Books</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionChip]}
+                    onPress={async () => {
+                      if (!selectedBook) return;
+                      const title = selectedBook.title || 'this book';
+                      Alert.alert(
+                        'Remove from Library',
+                        `Are you sure you want to remove "${title}" from your library?`,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Remove',
+                            style: 'destructive',
+                            onPress: async () => {
+                              try {
+                                // Optimistic update
+                                const prev = books;
+                                setBooks(curr => curr.filter(x => {
+                                  const sameId = x.id && selectedBook.id && String(x.id) === String(selectedBook.id);
+                                  const sameIsbn = x.isbn && selectedBook.isbn && String(x.isbn) === String(selectedBook.isbn);
+                                  return !(sameId || sameIsbn);
+                                }));
+                                await removeFromLibrary(selectedBook);
+                                // Reconcile with server
+                                loadLibrary();
+                                Alert.alert('Removed', 'The book was removed from your library.');
+                                setDetailsOpen(false);
+                              } catch (e: any) {
+                                Alert.alert('Error', e?.message || 'Failed to remove.');
+                              }
+                            },
+                          },
+                        ]
+                      );
+                    }}
+                  >
+                    <Text style={styles.actionChipText}>Remove from Library</Text>
                   </TouchableOpacity>
                 </View>
 
