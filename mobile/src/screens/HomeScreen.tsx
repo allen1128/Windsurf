@@ -183,6 +183,12 @@ export default function HomeScreen() {
     return /^\d{9}[\dXx]$/.test(s) || /^\d{13}$/.test(s);
   };
 
+  // Helpers for library membership checks (by id only)
+  const isInLibrary = (b: any) =>
+    books.some(lb => lb.id && b?.id && String(lb.id) === String(b.id));
+  const findLibraryBookFor = (b: any) =>
+    books.find(lb => lb.id && b?.id && String(lb.id) === String(b.id));
+
   // When lookup results don't have a backend id, generate a placeholder numeric id
 const getBookIdForAdd = (item: any): number => {
     if (item?.id != null) return Number(item.id);
@@ -329,30 +335,87 @@ const getBookIdForAdd = (item: any): number => {
                   return `${title}-${author}-${index}`;
                 }}
                 contentContainerStyle={{ paddingTop: 8 }}
-                renderItem={({ item }) => (
-                  <View style={styles.resultRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.resultTitle} numberOfLines={1}>{item.title}</Text>
-                      <Text style={styles.resultMeta} numberOfLines={1}>{item.author || 'Unknown'} • {item.genre || 'N/A'}</Text>
+                renderItem={({ item }) => {
+                  const inLib = isInLibrary(item);
+                  return (
+                    <View style={styles.resultRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.resultTitle} numberOfLines={1}>{item.title}</Text>
+                        <Text style={styles.resultMeta} numberOfLines={1}>{item.author || 'Unknown'} • {item.genre || 'N/A'}</Text>
+                      </View>
+                      {inLib ? (
+                        <TouchableOpacity
+                          style={[styles.addRowBtn, { backgroundColor: '#ef4444' }]}
+                          onPress={async () => {
+                            try {
+                              const libBook = findLibraryBookFor(item);
+                              if (!libBook || !(libBook.id && /^\d+$/.test(String(libBook.id)))) {
+                                throw new Error('Missing library book id to remove');
+                              }
+                              await removeFromLibrary(libBook);
+                              // Optimistically remove from local books and keep modal open to show toggle
+                              setBooks(curr => curr.filter(b => String(b.id) !== String(libBook.id)));
+                              loadLibrary();
+                              Alert.alert('Removed', 'The book was removed from your library.');
+                            } catch (e: any) {
+                              Alert.alert('Error', e?.message || 'Failed to remove.');
+                            }
+                          }}
+                        >
+                          <Text style={styles.addRowBtnText}>Remove</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.addRowBtn}
+                          onPress={async () => {
+                            try {
+                              const added = await addToLibraryByPayload(item, item.genre);
+                              // Update this search item with the new backend id so isInLibrary(id) becomes true
+                              if (added && added.id != null) {
+                                setResults(curr => curr.map(r => {
+                                  const sameId = r.id != null && item.id != null && String(r.id) === String(item.id);
+                                  const sameIsbn = r.isbn && item.isbn && String(r.isbn) === String(item.isbn);
+                                  const sameTitleAuthor = (r.title === item.title) && ((r.author || '') === (item.author || ''));
+                                  if (sameId || sameIsbn || sameTitleAuthor) {
+                                    return { ...r, id: String(added.id) };
+                                  }
+                                  return r;
+                                }));
+                                // Optimistically add to local books so the button toggles immediately
+                                setBooks(curr => {
+                                  const exists = curr.some(b => String(b.id) === String(added.id));
+                                  if (exists) return curr;
+                                  const newBook = {
+                                    id: String(added.id),
+                                    title: added.title || item.title || 'Untitled',
+                                    author: added.author || item.author || 'Unknown',
+                                    genre: added.genreShelf || added.genre || item.genre || 'General',
+                                    coverUrl: (added.coverImageUrl || added.coverUrl || item.coverUrl || '').replace(/^http:\/\//, 'https://'),
+                                    isbn: added.isbn || item.isbn,
+                                    description: added.description || item.description,
+                                    publisher: added.publisher || item.publisher,
+                                    publicationYear: added.publicationYear || item.publicationYear,
+                                    pageCount: added.pageCount || item.pageCount,
+                                    genreShelf: added.genreShelf,
+                                    ageShelf: added.ageShelf,
+                                  } as any;
+                                  return [...curr, newBook];
+                                });
+                              }
+                              Alert.alert('Added', 'The book was added to your library.');
+                              // Refresh library list
+                              loadLibrary();
+                            } catch (e: any) {
+                              Alert.alert('Error', e?.message || 'Failed to add.');
+                            }
+                          }}
+                        >
+                          <Text style={styles.addRowBtnText}>Add</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
-                    <TouchableOpacity
-                      style={styles.addRowBtn}
-                      onPress={async () => {
-                        try {
-                          await addToLibraryByPayload(item, item.genre);
-                          Alert.alert('Added', 'The book was added to your library.');
-                          setAddOpen(false);
-                          // Refresh library list
-                          loadLibrary();
-                        } catch (e: any) {
-                          Alert.alert('Error', e?.message || 'Failed to add.');
-                        }
-                      }}
-                    >
-                      <Text style={styles.addRowBtnText}>Add</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
+                  );
+                }}
               />
             )}
           </View>
@@ -493,30 +556,88 @@ const getBookIdForAdd = (item: any): number => {
                       horizontal
                       showsHorizontalScrollIndicator={false}
                       contentContainerStyle={{ paddingVertical: 6, gap: 12 }}
-                      renderItem={({ item }) => (
-                        <View style={styles.recItem}>
-                          <TouchableOpacity onPress={() => setSelectedBook(item)}>
-                            <Image source={{ uri: item.coverUrl || 'https://via.placeholder.com/120x180?text=Book' }} style={styles.recCover} />
-                          </TouchableOpacity>
-                          <Text style={styles.recTitle} numberOfLines={2}>{item.title}</Text>
-                          <Text style={styles.recAuthor} numberOfLines={1}>{item.author || 'Unknown'}</Text>
-                          <TouchableOpacity
-                            style={styles.recAddBtn}
-                            onPress={async () => {
-                              try {
-                                await addToLibraryByPayload(item, item.genre);
-                                Alert.alert('Added', 'The book was added to your library.');
-                                loadLibrary();
-                              } catch (e: any) {
-                                Alert.alert('Error', e?.message || 'Failed to add.');
-                              }
-                            }}
-                          >
-                            <Text style={styles.recAddBtnText}>Add</Text>
-                          </TouchableOpacity>
-                        </View>
-                      )}
-                    />
+                      renderItem={({ item }) => {
+                        const inLib = isInLibrary(item);
+                        return (
+                          <View style={styles.recItem}>
+                            <TouchableOpacity onPress={() => setSelectedBook(item)}>
+                              <Image source={{ uri: item.coverUrl || 'https://via.placeholder.com/120x180?text=Book' }} style={styles.recCover} />
+                            </TouchableOpacity>
+                            <Text style={styles.recTitle} numberOfLines={2}>{item.title}</Text>
+                            <Text style={styles.recAuthor} numberOfLines={1}>{item.author || 'Unknown'}</Text>
+                            {inLib ? (
+                              <TouchableOpacity
+                                style={[styles.recAddBtn, { backgroundColor: '#ef4444' }]}
+                                onPress={async () => {
+                                  try {
+                                    const libBook = findLibraryBookFor(item);
+                                    if (!libBook || !(libBook.id && /^\d+$/.test(String(libBook.id)))) {
+                                      throw new Error('Missing library book id to remove');
+                                    }
+                                    await removeFromLibrary(libBook);
+                                    setBooks(curr => curr.filter(x => String(x.id) !== String(libBook.id)));
+                                    loadLibrary();
+                                    Alert.alert('Removed', 'The book was removed from your library.');
+                                  } catch (e: any) {
+                                    Alert.alert('Error', e?.message || 'Failed to remove.');
+                                  }
+                                }}
+                              >
+                                <Text style={styles.recAddBtnText}>Remove</Text>
+                              </TouchableOpacity>
+                            ) : (
+                              <TouchableOpacity
+                                style={styles.recAddBtn}
+                                onPress={async () => {
+                                  try {
+                                    const added = await addToLibraryByPayload(item, item.genre);
+                                    // Update this rec item with the new backend id so isInLibrary(id) becomes true
+                                    if (added && added.id != null) {
+                                      setRecs(curr => curr.map(r => {
+                                        const sameId = r.id != null && item.id != null && String(r.id) === String(item.id);
+                                        const sameIsbn = r.isbn && item.isbn && String(r.isbn) === String(item.isbn);
+                                        const sameTitleAuthor = (r.title === item.title) && ((r.author || '') === (item.author || ''));
+                                        if (sameId || sameIsbn || sameTitleAuthor) {
+                                          return { ...r, id: String(added.id) } as any;
+                                        }
+                                        return r;
+                                      }));
+                                      // Optimistically add to local books so the button toggles immediately
+                                      setBooks(curr => {
+                                        const exists = curr.some(b => String(b.id) === String(added.id));
+                                        if (exists) return curr;
+                                        const newBook = {
+                                          id: String(added.id),
+                                          title: added.title || item.title || 'Untitled',
+                                          author: added.author || item.author || 'Unknown',
+                                          genre: added.genreShelf || added.genre || item.genre || 'General',
+                                          coverUrl: (added.coverImageUrl || added.coverUrl || item.coverUrl || '').replace(/^http:\/\//, 'https://'),
+                                          isbn: added.isbn || item.isbn,
+                                          description: added.description || item.description,
+                                          publisher: added.publisher || item.publisher,
+                                          publicationYear: added.publicationYear || item.publicationYear,
+                                          pageCount: added.pageCount || item.pageCount,
+                                          genreShelf: added.genreShelf,
+                                          ageShelf: added.ageShelf,
+                                        } as any;
+                                        return [...curr, newBook];
+                                      });
+                                    }
+                                    Alert.alert('Added', 'The book was added to your library.');
+                                    // Refresh library to include the new item
+                                    loadLibrary();
+                                  } catch (e: any) {
+                                    Alert.alert('Error', e?.message || 'Failed to add.');
+                                  }
+                                }}
+                              >
+                                <Text style={styles.recAddBtnText}>Add</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        );
+                      }}
+                      />
                   ) : (
                     <Text style={styles.detailsMeta}>No recommendations yet.</Text>
                   )}
