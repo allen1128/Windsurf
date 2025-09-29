@@ -180,14 +180,26 @@ public class BookController {
         if (query.getTitle() != null && !query.getTitle().isBlank()) {
             List<BookDTO> found = bookService.lookupBooks(null, query.getTitle());
             if (found != null && !found.isEmpty()) {
-                // filter: valid image and not the same ISBN as the source, limit to 12
-                final String srcIsbnFinal = query.getIsbn();
-                List<BookDTO> filtered = found.stream()
-                    .filter(b -> b.getIsbn() != null && (srcIsbnFinal == null || !b.getIsbn().replaceAll("[-\\s]", "").equals(srcIsbnFinal)))
-                    .filter(b -> hasValidImage(b.getCoverImageUrl()))
-                    .limit(12)
-                    .collect(Collectors.toList());
-                resp.setSimilarBooks(filtered);
+                final String srcIsbnFinal = query.getIsbn() != null ? query.getIsbn().replaceAll("[-\\s]", "") : null;
+
+                java.util.Set<String> seenIsbn = new java.util.HashSet<>();
+                java.util.List<BookDTO> out = new java.util.ArrayList<>();
+                for (BookDTO b : found) {
+                    // Must have a valid image
+                    if (!hasValidImage(b.getCoverImageUrl())) continue;
+
+                    // Normalize ISBN for dedupe and source exclusion
+                    String bIsbn = b.getIsbn() != null ? b.getIsbn().replaceAll("[-\\s]", "") : null;
+                    if (bIsbn != null) {
+                        if (srcIsbnFinal != null && srcIsbnFinal.equals(bIsbn)) continue; // exclude source
+                        if (seenIsbn.contains(bIsbn)) continue; // dedupe by isbn only
+                        seenIsbn.add(bIsbn);
+                    }
+
+                    out.add(b);
+                    if (out.size() >= 12) break;
+                }
+                resp.setSimilarBooks(out);
             }
         }
 
@@ -199,4 +211,6 @@ public class BookController {
         String u = url.trim().toLowerCase();
         return u.startsWith("http://") || u.startsWith("https://");
     }
+
+    
 }
